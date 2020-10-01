@@ -47,6 +47,7 @@ DIM SHARED VAR&(0 TO 15, 0 TO 15)
 PPOS = 0
 PLIN = 0
 LAP = -1
+_ALLOWFULLSCREEN _OFF , _OFF
 DO
     C$ = ""
     A$ = ""
@@ -132,11 +133,9 @@ SUB EXECCMD
                 ES$ = "Incorrect amount of data."
                 EC% = 2
             ELSE
-                VA = VAL(LEFT$(A$, INSTR(A$, " ")))
-                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
-                VB = VAL(LEFT$(A$, INSTR(A$, " ")))
-                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
-                VC = VAL(A$)
+                VA = VAL(GETARG$(1))
+                VB = VAL(GETARG$(2))
+                VC = VAL(GETARG$(3))
             END IF
             IF VA > 255 THEN
                 VA = VA - 256
@@ -150,11 +149,9 @@ SUB EXECCMD
                 ES$ = "Incorrect amount of data."
                 EC% = 2
             ELSE
-                VA = VAL(LEFT$(A$, INSTR(A$, " ")))
-                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
-                VB = VAL(LEFT$(A$, INSTR(A$, " ")))
-                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
-                VC = VAL(A$)
+                VA = VAL(GETARG$(1))
+                VB = VAL(GETARG$(2))
+                VC = VAL(GETARG$(3))
             END IF
             IF VA > 255 THEN
                 VA = VA - 256
@@ -168,11 +165,9 @@ SUB EXECCMD
                 ES$ = "Incorrect amount of data."
                 EC% = 2
             ELSE
-                VA = VAL(LEFT$(A$, INSTR(A$, " ")))
-                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
-                VB = VAL(LEFT$(A$, INSTR(A$, " ")))
-                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
-                VC = VAL(A$)
+                VA = VAL(GETARG$(1))
+                VB = VAL(GETARG$(2))
+                VC = VAL(GETARG$(3))
             END IF
             IF VA > 255 THEN
                 VA = VA - 256
@@ -186,11 +181,9 @@ SUB EXECCMD
                 ES$ = "Incorrect amount of data."
                 EC% = 2
             ELSE
-                VA = VAL(LEFT$(A$, INSTR(A$, " ")))
-                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
-                VB = VAL(LEFT$(A$, INSTR(A$, " ")))
-                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
-                VC = VAL(A$)
+                VA = VAL(GETARG$(1))
+                VB = VAL(GETARG$(2))
+                VC = VAL(GETARG$(3))
             END IF
             IF VA > 255 THEN
                 VA = VA - 256
@@ -204,11 +197,9 @@ SUB EXECCMD
                 ES$ = "Incorrect amount of data."
                 EC% = 2
             ELSE
-                VA = VAL(LEFT$(A$, INSTR(A$, " ")))
-                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
-                VB = VAL(LEFT$(A$, INSTR(A$, " ")))
-                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
-                VC = VAL(A$)
+                VA = VAL(GETARG$(1))
+                VB = VAL(GETARG$(2))
+                VC = VAL(GETARG$(3))
             END IF
             IF VA > 255 THEN
                 VA = VA - 256
@@ -222,11 +213,9 @@ SUB EXECCMD
                 ES$ = "Incorrect amount of data."
                 EC% = 2
             ELSE
-                VA = VAL(LEFT$(A$, INSTR(A$, " ")))
-                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
-                VB = VAL(LEFT$(A$, INSTR(A$, " ")))
-                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
-                VC = VAL(A$)
+                VA = VAL(GETARG$(1))
+                VB = VAL(GETARG$(2))
+                VC = VAL(GETARG$(3))
             END IF
             IF VA > 255 THEN
                 VA = VA - 256
@@ -265,9 +254,8 @@ SUB EXECCMD
             PRINT A$
         CASE "ECHV"
             NULLERR
-            VA = VAL(LEFT$(A$, INSTR(A$, " ")))
-            A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
-            VB = VAL(A$)
+            VA = VAL(GETARG$(1))
+            VB = VAL(GETARG$(1))
             IF VA > 255 THEN
                 VA = VA - 256
                 VF& = VAR&(VA, VB)
@@ -316,6 +304,20 @@ SUB EXECCMD
         CASE "DTTL", "DTITLE", "DSPTITLE", "DSPTTL"
             NULLERR
             _TITLE A$
+        CASE "FSCR"
+            VA~%% = VAL(GETARG$(1))
+            SELECT CASE (VA~%% MOD 5)
+                CASE 0
+                    _FULLSCREEN _OFF
+                CASE 1
+                    _FULLSCREEN _STRETCH
+                CASE 2
+                    _FULLSCREEN _STRETCH , _SMOOTH
+                CASE 3
+                    _FULLSCREEN _SQUAREPIXELS
+                CASE 4
+                    _FULLSCREEN _SQUAREPIXELS , _SMOOTH
+            END SELECT
     END SELECT
     IF EC% > 0 THEN
         CES$ = "Line " + _TRIM$(STR$(PLIN)) + ": " + ES$ + " (" + _TRIM$(STR$(EC%)) + ")"
@@ -327,6 +329,29 @@ FUNCTION TEST (ARG$)
 END FUNCTION
 FUNCTION GETVAL$ (ARG$)
 
+END FUNCTION
+FUNCTION GETARG$ (ANUM)
+    IF A$ = "" THEN GETARG$ = "": EXIT FUNCTION
+    DIM IIS AS _BIT
+    IIS = 0
+    CAN = 1
+    FOR I = 1 TO LEN(A$)
+        CHAR = ASC(A$, I)
+        IF CHAR = 34 THEN
+            IIS = NOT IIS
+        ELSE
+            IF CHAR = 32 THEN
+                IF IIS THEN
+                    IF CAN = ANUM THEN GETARG$ = GETARG$ + CHR$(CHAR)
+                ELSE
+                    CAN = CAN + 1
+                    IF CAN > ANUM THEN EXIT FUNCTION
+                END IF
+            ELSE
+                IF CAN = ANUM THEN GETARG$ = GETARG$ + CHR$(CHAR)
+            END IF
+        END IF
+    NEXT
 END FUNCTION
 SUB NULLERR
     EC% = 0
