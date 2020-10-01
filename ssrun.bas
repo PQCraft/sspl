@@ -5,7 +5,7 @@ _CONSOLETITLE ""
 FILE$ = COMMAND$(1)
 _TITLE FILE$
 DIM SHARED EC%
-EC% = 0
+NULLERR
 DIM SHARED TRUE AS _BIT
 DIM SHARED FALSE AS _BIT
 TRUE = -1
@@ -39,8 +39,14 @@ DIM SHARED PPOS AS LONG
 DIM SHARED PDO AS LONG
 DIM SHARED PCHR AS _UNSIGNED _BYTE
 DIM SHARED PLIN AS LONG
+DIM SHARED LAP AS _UNSIGNED _BYTE
+DIM SHARED LA(0 TO 255) AS LONG
+DIM SHARED VAR$(0 TO 255, 0 TO 15)
+DIM SHARED VAR%(0 TO 255, 0 TO 255)
+DIM SHARED VAR&(0 TO 15, 0 TO 15)
 PPOS = 0
 PLIN = 0
+LAP = -1
 DO
     C$ = ""
     A$ = ""
@@ -67,6 +73,7 @@ DO
         END IF
     LOOP
     C$ = UCASE$(_TRIM$(C$))
+    A$ = _TRIM$(A$)
     IF DEBUG = -1 THEN PRINT "<"; C$; ">"; "["; A$; "]"
     IF C$ <> "" THEN
         IF ASC(C$, 1) <> 35 THEN
@@ -79,11 +86,13 @@ SYSTEM
 '-------SUBS-------
 
 SUB P_ERR (ERRSTR$)
-    PRINT CHR$(27); "[31mE: ";
-    PRINT CHR$(27); "[0m"; ERRSTR$
+    CON TRUE
+    PRINT CHR$(27); "[1m"; CHR$(27); "[31mE:";
+    PRINT CHR$(27); "[0m "; ERRSTR$
     SYSTEM
 END SUB
 SUB P_HLP
+    CON TRUE
     IF INWIN <> 0 THEN
         PRINT "ssrun <ssf_file> [program arguments]"
     ELSE
@@ -92,7 +101,8 @@ SUB P_HLP
     SYSTEM
 END SUB
 SUB CON (CONSTAT)
-    INCON = CONSTAT = TRUE
+    INCON = CONSTAT
+    INDSP = NOT CONSTAT
     IF INCON THEN
         _CONSOLE ON
         _DEST _CONSOLE
@@ -101,8 +111,9 @@ SUB CON (CONSTAT)
     END IF
 END SUB
 SUB DSP (DSPSTAT)
-    INDSP = DSPSTAT = TRUE
-    IF INCON THEN
+    INDSP = DSPSTAT
+    INCON = NOT DSPSTAT
+    IF INDSP THEN
         _SCREENSHOW
         _DEST 0
     ELSE
@@ -112,40 +123,199 @@ END SUB
 SUB EXECCMD
     EC% = 255
     ES$ = _TRIM$(C$) + " is not a command."
+    IF A$ = CHR$(0) THEN A$ = ""
     SELECT CASE C$
-        CASE CHR$(0): EC% = 0: ES$ = ""
-        CASE "DO"
-            EC% = 0
-            PDO = PPOS
+        CASE CHR$(0): NULLERR
+        CASE "SET"
+            NULLERR
+            IF A$ = "" THEN
+                ES$ = "Incorrect amount of data."
+                EC% = 2
+            ELSE
+                VA = VAL(LEFT$(A$, INSTR(A$, " ")))
+                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
+                VB = VAL(LEFT$(A$, INSTR(A$, " ")))
+                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
+                VC = VAL(A$)
+            END IF
+            IF VA > 255 THEN
+                VA = VA - 256
+                VAR&(VA, VB) = VC
+            ELSE
+                VAR%(VA, VB) = VC
+            END IF
+        CASE "ADD"
+            NULLERR
+            IF A$ = "" THEN
+                ES$ = "Incorrect amount of data."
+                EC% = 2
+            ELSE
+                VA = VAL(LEFT$(A$, INSTR(A$, " ")))
+                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
+                VB = VAL(LEFT$(A$, INSTR(A$, " ")))
+                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
+                VC = VAL(A$)
+            END IF
+            IF VA > 255 THEN
+                VA = VA - 256
+                VAR&(VA, VB) = VAR&(VA, VB) + VC
+            ELSE
+                VAR%(VA, VB) = VAR%(VA, VB) + VC
+            END IF
+        CASE "SUBT"
+            NULLERR
+            IF A$ = "" THEN
+                ES$ = "Incorrect amount of data."
+                EC% = 2
+            ELSE
+                VA = VAL(LEFT$(A$, INSTR(A$, " ")))
+                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
+                VB = VAL(LEFT$(A$, INSTR(A$, " ")))
+                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
+                VC = VAL(A$)
+            END IF
+            IF VA > 255 THEN
+                VA = VA - 256
+                VAR&(VA, VB) = VAR&(VA, VB) - VC
+            ELSE
+                VAR%(VA, VB) = VAR%(VA, VB) - VC
+            END IF
+        CASE "MULT"
+            NULLERR
+            IF A$ = "" THEN
+                ES$ = "Incorrect amount of data."
+                EC% = 2
+            ELSE
+                VA = VAL(LEFT$(A$, INSTR(A$, " ")))
+                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
+                VB = VAL(LEFT$(A$, INSTR(A$, " ")))
+                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
+                VC = VAL(A$)
+            END IF
+            IF VA > 255 THEN
+                VA = VA - 256
+                VAR&(VA, VB) = VAR&(VA, VB) * VC
+            ELSE
+                VAR%(VA, VB) = VAR%(VA, VB) * VC
+            END IF
+        CASE "DV"
+            NULLERR
+            IF A$ = "" THEN
+                ES$ = "Incorrect amount of data."
+                EC% = 2
+            ELSE
+                VA = VAL(LEFT$(A$, INSTR(A$, " ")))
+                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
+                VB = VAL(LEFT$(A$, INSTR(A$, " ")))
+                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
+                VC = VAL(A$)
+            END IF
+            IF VA > 255 THEN
+                VA = VA - 256
+                VAR&(VA, VB) = VAR&(VA, VB) / VC
+            ELSE
+                VAR%(VA, VB) = VAR%(VA, VB) / VC
+            END IF
+        CASE "EXP"
+            NULLERR
+            IF A$ = "" THEN
+                ES$ = "Incorrect amount of data."
+                EC% = 2
+            ELSE
+                VA = VAL(LEFT$(A$, INSTR(A$, " ")))
+                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
+                VB = VAL(LEFT$(A$, INSTR(A$, " ")))
+                A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
+                VC = VAL(A$)
+            END IF
+            IF VA > 255 THEN
+                VA = VA - 256
+                VAR&(VA, VB) = VAR&(VA, VB) ^ VC
+            ELSE
+                VAR%(VA, VB) = VAR%(VA, VB) ^ VC
+            END IF
+        CASE "LPIF"
+            NULLERR
+            IF TEST(A$) THEN
+                PPOS = LA(LAP)
+            ELSE
+                LAP = LAP - 1
+            END IF
         CASE "LOOP"
-            EC% = 0
-            PPOS = PDO
+            NULLERR
+            PPOS = LA(LAP)
+        CASE "DO"
+            NULLERR
+            LAP = LAP + 1
+            LA(LAP) = PPOS
         CASE "WAIT"
-            EC% = 0
+            NULLERR
             _DELAY VAL(A$) / 1000
         CASE "EXIT"
-            EC% = 0
+            NULLERR
             SYSTEM
         CASE "CLRS", "CLS", "CLEAR"
-            EC% = 0
+            NULLERR
             CLS
         CASE "ECHO"
-            EC% = 0
+            NULLERR
             PRINT A$;
         CASE "ECLN"
-            EC% = 0
+            NULLERR
             PRINT A$
+        CASE "ECHV"
+            NULLERR
+            VA = VAL(LEFT$(A$, INSTR(A$, " ")))
+            A$ = RIGHT$(A$, LEN(A$) - INSTR(A$, " "))
+            VB = VAL(A$)
+            IF VA > 255 THEN
+                VA = VA - 256
+                VF& = VAR&(VA, VB)
+            ELSE
+                VF& = VAR%(VA, VB)
+            END IF
+            PRINT _TRIM$(STR$(VF&));
         CASE "PCHR"
-            EC% = 0
+            NULLERR
             IF LEN(A$) > 1 OR LEN(A$) < 1 THEN
                 ES$ = "Incorrect amount of data."
-                EC% = 255
+                EC% = 2
             ELSE
                 PRINT A$;
             END IF
         CASE "PASC"
-            EC% = 0
+            NULLERR
             PRINT CHR$(VAL(A$) MOD 256);
+        CASE "CONR"
+            NULLERR
+            PRINT CHR$(27); "[0m";
+        CASE "CONB"
+            NULLERR
+            PRINT CHR$(27); "[1m";
+        CASE "CONU"
+            NULLERR
+            PRINT CHR$(27); "[4m";
+        CASE "CONI"
+            NULLERR
+            PRINT CHR$(27); "[7m";
+        CASE "CSCR", "CMODE", "CON"
+            NULLERR
+            DSP FALSE
+            CON TRUE
+        CASE "VSCR", "VMODE", "DSP"
+            NULLERR
+            CON FALSE
+            DSP TRUE
+        CASE "STTL", "TITLE"
+            NULLERR
+            _CONSOLETITLE A$
+            _TITLE A$
+        CASE "CTTL", "CTITLE", "CONTITLE", "CONTTL"
+            NULLERR
+            _CONSOLETITLE A$
+        CASE "DTTL", "DTITLE", "DSPTITLE", "DSPTTL"
+            NULLERR
+            _TITLE A$
     END SELECT
     IF EC% > 0 THEN
         CES$ = "Line " + _TRIM$(STR$(PLIN)) + ": " + ES$ + " (" + _TRIM$(STR$(EC%)) + ")"
@@ -158,4 +328,6 @@ END FUNCTION
 FUNCTION GETVAL$ (ARG$)
 
 END FUNCTION
-
+SUB NULLERR
+    EC% = 0
+END SUB

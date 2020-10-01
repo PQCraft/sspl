@@ -1,0 +1,16 @@
+ecln Hello World!
+echo Test
+wait 1000
+#pasc 13
+#pasc 13
+pchr E
+wait 1000
+pchr E
+wait 1000
+pasc 33
+wait 1000
+ecln
+wait 2000
+clrs
+wait 1000
+

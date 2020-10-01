@@ -1,0 +1,16 @@
+ecln speed test
+vscr
+sttl Speed Test
+set 0 0 2
+exp 0 0 14
+mult 0 0 2
+subt 0 0 1
+echv 0 0
+ecln
+wait 2000
+do
+echv 0 0
+ecln
+add 0 0 1
+loop
+
