@@ -3,7 +3,7 @@ Short Script is designed to be easy and fast to interpret but powerful at the sa
 Available extended features as of current build:<br>
 * ~~Loading images~~<br>
 * ~~Loading sound~~<br>
-* ~~Graphical screen~~<br>
+* Graphical screen<br>
 * ~~GUI drawing~~<br>
 * ~~Sprites~~<br>
 * ~~Network transfers~~<br>
