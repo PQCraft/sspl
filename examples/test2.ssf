@@ -1,0 +1,17 @@
+vscr
+#vmode 640 480 0 0
+color 18
+ecln Somebody once told me the world was going to roll me, I ain't the sharpest tool in the shed.
+wait 8000
+loc 1 1
+color 2
+ecln Somebody once told me the world was going to roll me, I ain't the sharpest tool in the shed.
+color 18
+ecln She was looking kind of dumb with her finger and her thumb, in a shape of an 'L' on her forehead.
+wait 8000
+loc 1 3
+color 2
+ecln She was looking kind of dumb with her finger and her thumb, in a shape of an 'L' on her forehead.
+wait 8000
+cls
+exit
