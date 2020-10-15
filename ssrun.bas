@@ -2,6 +2,7 @@ $CONSOLE
 $SCREENHIDE
 _TITLE ""
 _CONSOLETITLE ""
+ON ERROR GOTO ERRHNDL
 CHDIR _STARTDIR$
 FILE$ = COMMAND$(1)
 _TITLE FILE$
@@ -37,6 +38,7 @@ ELSE
     END IF
 END IF
 OPEN FILE$ FOR BINARY AS #1
+RANDOMIZE USING TIMER
 DIM SHARED PPOS AS LONG
 DIM SHARED PDO AS LONG
 DIM SHARED PCHR AS _UNSIGNED _BYTE
@@ -48,7 +50,12 @@ DIM SHARED VAR$(0 TO 255, 0 TO 15)
 DIM SHARED VAR%(0 TO 255, 0 TO 255)
 DIM SHARED VAR&(0 TO 15, 0 TO 15)
 DIM SHARED IMGHNDL&(0 TO 15)
-DIM SHARED CIMG
+DIM SHARED SNDHNDL&(0 TO 15)
+DIM SHARED NETHNDL&(0 TO 15)
+DIM SHARED NETURL$(0 TO 15)
+'DIM SHARED CIMG
+DIM SHARED DCHAR
+DCHAR = 32
 PPOS = 0
 PLIN = 0
 LAP = -1
@@ -93,11 +100,18 @@ SYSTEM
 
 '-------SUBS-------
 
+ERRHNDL:
+P_ERR "Internal Error: " + _TRIM$(STR$(ERR)) + ";" + _TRIM$(STR$(_ERRORLINE))
 SUB P_ERR (ERRSTR$)
     CON TRUE
     PRINT CHR$(27); "[1m"; CHR$(27); "[31mE:";
     PRINT CHR$(27); "[0m "; ERRSTR$
     SYSTEM
+END SUB
+SUB P_WRN (ERRSTR$)
+    CON TRUE
+    PRINT CHR$(27); "[1m"; CHR$(27); "[33m!:";
+    PRINT CHR$(27); "[0m "; ERRSTR$
 END SUB
 SUB P_HLP
     CON TRUE
@@ -107,6 +121,15 @@ SUB P_HLP
         PRINT "Usage: ssrun ssf_file [program arguments]"
     END IF
     SYSTEM
+END SUB
+SUB P_CON (CONSTR$)
+    IF INCON THEN
+        PRINT CONSTR$
+    ELSE
+        _DEST _CONSOLE
+        PRINT CONSTR$
+        _DEST 0
+    END IF
 END SUB
 SUB CON (CONSTAT)
     INCON = CONSTAT
@@ -145,13 +168,9 @@ SUB EXECCMD
             ELSE
                 VA = VAL(GETARG$(1))
                 VB = VAL(GETARG$(2))
-                VC = VAL(GETARG$(3))
-            END IF
-            IF VA > 255 THEN
-                VA = VA - 256
-                VAR&(VA, VB) = VC
-            ELSE
-                VAR%(VA, VB) = VC
+                VC$ = GETARG$(3)
+                VC = VAL(VC$)
+                SETVAR VA, VB, VC, VC$
             END IF
         CASE "ADD"
             NULLERR
@@ -161,13 +180,13 @@ SUB EXECCMD
             ELSE
                 VA = VAL(GETARG$(1))
                 VB = VAL(GETARG$(2))
-                VC = VAL(GETARG$(3))
-            END IF
-            IF VA > 255 THEN
-                VA = VA - 256
-                VAR&(VA, VB) = VAR&(VA, VB) + VC
-            ELSE
-                VAR%(VA, VB) = VAR%(VA, VB) + VC
+                IF VA > 271 THEN
+                    VC$ = GETARG$(3)
+                    SETVAR VA, VB, 0, GETVAR(VA, VB) + VC$
+                ELSE
+                    VC = VAL(GETARG$(3))
+                    SETVAR VA, VB, VAL(GETVAR(VA, VB)) + VC, ""
+                END IF
             END IF
         CASE "SUBT"
             NULLERR
@@ -178,12 +197,7 @@ SUB EXECCMD
                 VA = VAL(GETARG$(1))
                 VB = VAL(GETARG$(2))
                 VC = VAL(GETARG$(3))
-            END IF
-            IF VA > 255 THEN
-                VA = VA - 256
-                VAR&(VA, VB) = VAR&(VA, VB) - VC
-            ELSE
-                VAR%(VA, VB) = VAR%(VA, VB) - VC
+                SETVAR VA, VB, VAL(GETVAR(VA, VB)) - VC, ""
             END IF
         CASE "MULT"
             NULLERR
@@ -194,12 +208,7 @@ SUB EXECCMD
                 VA = VAL(GETARG$(1))
                 VB = VAL(GETARG$(2))
                 VC = VAL(GETARG$(3))
-            END IF
-            IF VA > 255 THEN
-                VA = VA - 256
-                VAR&(VA, VB) = VAR&(VA, VB) * VC
-            ELSE
-                VAR%(VA, VB) = VAR%(VA, VB) * VC
+                SETVAR VA, VB, VAL(GETVAR(VA, VB)) * VC, ""
             END IF
         CASE "DV"
             NULLERR
@@ -210,12 +219,7 @@ SUB EXECCMD
                 VA = VAL(GETARG$(1))
                 VB = VAL(GETARG$(2))
                 VC = VAL(GETARG$(3))
-            END IF
-            IF VA > 255 THEN
-                VA = VA - 256
-                VAR&(VA, VB) = VAR&(VA, VB) / VC
-            ELSE
-                VAR%(VA, VB) = VAR%(VA, VB) / VC
+                SETVAR VA, VB, VAL(GETVAR(VA, VB)) / VC, ""
             END IF
         CASE "EXP"
             NULLERR
@@ -226,12 +230,7 @@ SUB EXECCMD
                 VA = VAL(GETARG$(1))
                 VB = VAL(GETARG$(2))
                 VC = VAL(GETARG$(3))
-            END IF
-            IF VA > 255 THEN
-                VA = VA - 256
-                VAR&(VA, VB) = VAR&(VA, VB) ^ VC
-            ELSE
-                VAR%(VA, VB) = VAR%(VA, VB) ^ VC
+                SETVAR VA, VB, VAL(GETVAR(VA, VB)) ^ VC, ""
             END IF
         CASE "LPIF"
             NULLERR
@@ -262,17 +261,17 @@ SUB EXECCMD
         CASE "ECLN"
             NULLERR
             PRINT A$
+        CASE "ECHA"
+            NULLERR
+            PRINT GETARG$(1);
+        CASE "ECLA"
+            NULLERR
+            PRINT GETARG$(1)
         CASE "ECHV"
             NULLERR
             VA = VAL(GETARG$(1))
             VB = VAL(GETARG$(2))
-            IF VA > 255 THEN
-                VA = VA - 256
-                VF& = VAR&(VA, VB)
-            ELSE
-                VF& = VAR%(VA, VB)
-            END IF
-            PRINT _TRIM$(STR$(VF&));
+            PRINT _TRIM$(GETVAR$(VA, VB));
         CASE "PCHR"
             NULLERR
             IF LEN(A$) > 1 OR LEN(A$) < 1 THEN
@@ -283,7 +282,7 @@ SUB EXECCMD
             END IF
         CASE "PASC"
             NULLERR
-            PRINT CHR$(VAL(A$) MOD 256);
+            PRINT CHR$(VAL(GETARG$(1)) MOD 256);
         CASE "LOC", "LOCATE"
             NULLERR
             VC = VAL(GETARG$(1))
@@ -301,6 +300,16 @@ SUB EXECCMD
         CASE "CONI"
             NULLERR
             PRINT CHR$(27); "[7m";
+        CASE "DCON"
+            NULLERR
+            _DEST _CONSOLE
+            INCON = TRUE
+            INDSP = FALSE
+        CASE "DDSP"
+            NULLERR
+            _DEST 0
+            INDSP = TRUE
+            INCON = FALSE
         CASE "CSCR", "CON"
             NULLERR
             DSP FALSE
@@ -351,13 +360,8 @@ SUB EXECCMD
             NULLERR
             VH = VAL(GETARG$(1))
             VV = VAL(GETARG$(2))
-            VC = VAL(GETARG$(3))
+            VC = 32 + (1 - (VAL(GETARG$(3)) MOD 2)) * 224
             VB = VAL(GETARG$(4))
-            IF VC MOD 2 * -1 THEN
-                VC = 32
-            ELSE
-                VC = 256
-            END IF
             SCREEN _NEWIMAGE(VH, VV, VC)
             IF (VB MOD 2) * -1 THEN
                 _DISPLAY
@@ -373,30 +377,130 @@ SUB EXECCMD
             ELSE
                 COLOR VFGC%, VAL(VBGC$)
             END IF
-        CASE "IMGSET"
-            NULLERR
-            CIMG = VAL(A$)
         CASE "IMGLD"
             NULLERR
-            IMGHNDL&(CIMG) = _LOADIMAGE(A$)
+            IMGHNDL&(VAL(GETARG$(1))) = _LOADIMAGE(GETARG$(2))
         CASE "IMGPUT"
             NULLERR
-            IPX1% = VAL(GETARG$(1))
-            IPY1% = VAL(GETARG$(2))
-            IPX2$ = GETARG$(3)
-            IPY2$ = GETARG$(4)
+            CIMG = VAL(GETARG$(1))
+            IPX1% = VAL(GETARG$(2))
+            IPY1% = VAL(GETARG$(3))
+            IPX2$ = GETARG$(4)
+            IPY2$ = GETARG$(5)
             IF IPX2$ = "" AND IPY2$ = "" THEN
-                _PUTIMAGE (IPX1%, IPX1%)-(VAL(IPX2$), VAL(IPY2$)), IMGHNDL&(CIMG)
-            ELSE
                 _PUTIMAGE (IPX1%, IPX1%), IMGHNDL&(CIMG)
+            ELSE
+                _PUTIMAGE (IPX1%, IPX1%)-(VAL(IPX2$), VAL(IPY2$)), IMGHNDL&(CIMG)
             END IF
         CASE "IMGRM"
+            NULLERR
+            _FREEIMAGE VAL(A$)
+        CASE "MHIDE"
+            NULLERR
+            _MOUSEHIDE
+        CASE "MSHOW"
+            NULLERR
+            _MOUSESHOW
+        CASE "SNDLD"
+            NULLERR
+            SNDHNDL&(VAL(GETARG$(1))) = _SNDOPEN(GETARG$(2))
+        CASE "SNDRM"
+            NULLERR
+            _SNDCLOSE SNDHNDL&(VAL(GETARG$(1)))
+        CASE "SNDPLAY"
+            NULLERR
+            _SNDPLAY SNDHNDL&(VAL(GETARG$(1)))
+        CASE "SNDLP"
+            NULLERR
+            _SNDLOOP SNDHNDL&(VAL(GETARG$(1)))
+        CASE "SNDPAUSE"
+            NULLERR
+            _SNDPAUSE SNDHNDL&(VAL(GETARG$(1)))
+        CASE "SNDPOS"
+            NULLERR
+            _SNDSETPOS SNDHNDL&(VAL(GETARG$(1))), VAL(GETARG$(2)) / 1000
+        CASE "SNDSTOP"
+            NULLERR
+            _SNDSTOP SNDHNDL&(VAL(GETARG$(1)))
+        CASE "SNDVOL"
+            NULLERR
+            _SNDVOL SNDHNDL&(VAL(GETARG$(1))), VAL(GETARG$(2)) / 100
+        CASE "NETOPEN"
+            NULLERR
+            NH = VAL(GETARG$(1))
+            U$ = GETARG$(2)
+            NETURL$(NH) = U$
+            P$ = GETARG$(3)
+            IF P$ = "" THEN P$ = "80"
+            NETHNDL&(NH) = _OPENCLIENT("TCP/IP:" + P$ + ":" + U$)
+            IF NETHNDL&(NH) = 0 THEN NETURL$(NH) = "": P_WRN "NETOPEN: Connection to " + U$ + " failed."
+        CASE "NETHTTP"
+            NULLERR
+            HR$ = "GET" + CHR$(13) + CHR$(10)
+            PUT #NETHNDL&(VAL(GETARG$(1))), , HR$
+        CASE "NETSEND"
+            NULLERR
+            D$ = GETARG$(2)
+            IF D$ = CHR$(13) THEN D$ = CHR$(13) + CHR$(10)
+            'PRINT D$
+            PUT #NETHNDL&(VAL(GETARG$(1))), , D$
+        CASE "NETSCHR"
+            NULLERR
+            D~%% = VAL(GETARG$(2))
+            D$ = CHR$(D~%%)
+            PUT #NETHNDL&(VAL(GETARG$(1))), , D$
+        CASE "NETRCV"
+            NULLERR
+            IF A$ = "" THEN
+                ES$ = "Incorrect amount of data."
+                EC% = 2
+            ELSE
+                NH = VAL(GETARG$(1))
+                VA = VAL(GETARG$(2))
+                VB = VAL(GETARG$(3))
+                GET #NETHNDL&(NH), , VC~%%
+                VC$ = CHR$(VC~%%)
+                SETVAR VA, VB, VC~%%, VC$
+            END IF
+        CASE "NETCLOSE"
+            NULLERR
     END SELECT
-    IF EC% > 0 THEN
-        CES$ = "Line " + _TRIM$(STR$(PLIN)) + ": " + _TRIM$(ES$) + " (" + _TRIM$(STR$(EC%)) + ")"
-        P_ERR CES$
-    END IF
+    IF EC% > 0 THEN P_ERR "Line " + _TRIM$(STR$(PLIN)) + ": " + _TRIM$(ES$) + " (" + _TRIM$(STR$(EC%)) + ")"
 END SUB
+FUNCTION EXECFN$ (IN$)
+    FN$ = UCASE$(LEFT$(IN$, INSTR(IN$, "(") - 1))
+    FES$ = _TRIM$(FN$) + " is not a function."
+    T$ = A$: TC = DCHAR: TE% = EC%
+    A$ = MID$(IN$, INSTR(IN$, "(") + 1, _INSTRREV(IN$, ")") - INSTR(IN$, "(") - 1): DCHAR = 44: EC% = 254
+    IF DEBUG THEN P_CON IN$
+    SELECT CASE FN$
+        CASE ""
+            NULLERR
+            P_WRN "Received blank function"
+        CASE "VAR"
+            NULLERR
+            EXECFN$ = GETVAR$(VAL(GETARG$(1)), VAL(GETARG$(2)))
+        CASE "CHR"
+            NULLERR
+            EXECFN$ = CHR$(VAL(GETARG$(1)))
+        CASE "ASC"
+            NULLERR
+            EXECFN$ = _TRIM$(STR$(ASC(GETARG$(1) + CHR$(0))))
+        CASE "RND", "RAND", "RANDOM"
+            NULLERR
+            EXECFN$ = _TRIM$(STR$(CINT(RND * VAL(GETARG$(2)) + VAL(GETARG$(1)))))
+        CASE "KBIN"
+            NULLERR
+            EXECFN$ = INKEY$
+        CASE "NETRCV"
+            NULLERR
+            NH = VAL(GETARG$(1))
+            GET #NETHNDL&(NH), , VC~%%
+            EXECFN$ = CHR$(VC~%%)
+    END SELECT
+    IF EC% > 0 THEN P_ERR "Line " + _TRIM$(STR$(PLIN)) + ": " + _TRIM$(FES$) + " (" + _TRIM$(STR$(EC%)) + ")"
+    A$ = T$: DCHAR = TC: EC% = TE%
+END FUNCTION
 FUNCTION TEST (ARG$)
 
 END FUNCTION
@@ -406,28 +510,71 @@ END FUNCTION
 FUNCTION GETVALN (ARG$)
 
 END FUNCTION
+FUNCTION GETVAR$ (VN1, VN2)
+    IF VN1 > 255 THEN
+        VN1 = VN1 - 256
+        IF VN1 > 15 THEN
+            VN1 = VN1 - 16
+            GETVAR$ = VAR$(VN1, VN2)
+        ELSE
+            GETVAR$ = STR$(VAR&(VN1, VN2))
+        END IF
+    ELSE
+        GETVAR$ = STR$(VAR%(VN1, VN2))
+    END IF
+END FUNCTION
+SUB SETVAR (VN1, VN2, N&, T$)
+    IF VN1 > 255 THEN
+        VN1 = VN1 - 256
+        IF VN1 > 15 THEN
+            VN1 = VN1 - 16
+            VAR$(VN1, VN2) = T$
+        ELSE
+            VAR&(VN1, VN2) = N&
+        END IF
+    ELSE
+        VAR%(VN1, VN2) = N&
+    END IF
+END SUB
 FUNCTION GETARG$ (ANUM)
     IF A$ = "" THEN GETARG$ = "": EXIT FUNCTION
     DIM IIS AS _BIT
     IIS = 0
+    IAS = 0
+    IIP = 0
     CAN = 1
+    HASQ = 0
     FOR I = 1 TO LEN(A$)
         CHAR = ASC(A$, I)
-        IF CHAR = 34 THEN
-            IIS = NOT IIS
+        IF CHAR = 40 AND IIS = FALSE THEN
+            IF CAN = ANUM THEN GETARG$ = GETARG$ + CHR$(CHAR)
+            IIP = TRUE
         ELSE
-            IF CHAR = 32 THEN
-                IF IIS THEN
-                    IF CAN = ANUM THEN GETARG$ = GETARG$ + CHR$(CHAR)
-                ELSE
-                    CAN = CAN + 1
-                    IF CAN > ANUM THEN GETARG$ = _TRIM$(GETARG$): EXIT FUNCTION
-                END IF
+            IF CHAR = 34 THEN
+                IIS = NOT IIS
+                IAS = TRUE
             ELSE
-                IF CAN = ANUM THEN GETARG$ = GETARG$ + CHR$(CHAR)
+                IF CHAR = DCHAR THEN
+                    IF IIS OR IIP THEN
+                        IF CAN = ANUM THEN GETARG$ = GETARG$ + CHR$(CHAR)
+                    ELSE
+                        CAN = CAN + 1
+                        IF CAN > ANUM THEN GETARG$ = _TRIM$(GETARG$): EXIT FOR
+                    END IF
+                ELSE
+                    IF CAN = ANUM THEN GETARG$ = GETARG$ + CHR$(CHAR)
+                END IF
             END IF
         END IF
+        IF CHAR = 41 AND IIP THEN IIP = FALSE
     NEXT
+    IF GETARG$ = "" THEN EXIT FUNCTION
+    'P_CON "GETARG$:1: " + GETARG$
+    IF NOT IAS THEN GETARG$ = _TRIM$(GETARG$)
+    IF RIGHT$(GETARG$, 1) = ")" AND NOT IAS THEN
+        GETARG$ = EXECFN$(GETARG$)
+    END IF
+    'P_CON "GETARG$:2: " + GETARG$
 END FUNCTION
 SUB NULLERR
     EC% = 0
